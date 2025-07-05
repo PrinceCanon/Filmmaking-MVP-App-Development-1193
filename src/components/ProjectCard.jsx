@@ -4,16 +4,16 @@ import { motion } from 'framer-motion';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiEdit, FiClock, FiPlay, FiCheck, FiEye } = FiIcons;
+const { FiEdit, FiClock, FiPlay, FiCheck, FiEye, FiLightbulb, FiLayers, FiVideo } = FiIcons;
 
 const ProjectCard = ({ project, index }) => {
   const navigate = useNavigate();
 
   const getPhaseIcon = (phase) => {
     switch (phase) {
-      case 'ideation': return FiEdit;
-      case 'planning': return FiClock;
-      case 'shooting': return FiPlay;
+      case 'ideation': return FiLightbulb;
+      case 'planning': return FiLayers;
+      case 'shooting': return FiVideo;
       case 'completed': return FiCheck;
       default: return FiEdit;
     }
@@ -23,7 +23,7 @@ const ProjectCard = ({ project, index }) => {
     switch (phase) {
       case 'ideation': return 'from-blue-500 to-purple-500';
       case 'planning': return 'from-purple-500 to-pink-500';
-      case 'shooting': return 'from-pink-500 to-red-500';
+      case 'shooting': return 'from-red-500 to-orange-500';
       case 'completed': return 'from-green-500 to-blue-500';
       default: return 'from-gray-500 to-gray-600';
     }
@@ -54,7 +54,6 @@ const ProjectCard = ({ project, index }) => {
           <h3 className="text-lg font-semibold text-white mb-2">{project.title}</h3>
           <p className="text-gray-300 text-sm line-clamp-2">{project.concept}</p>
         </div>
-        
         <div className={`flex items-center space-x-1 px-2 py-1 rounded-full bg-gradient-to-r ${getPhaseColor(project.phase)}`}>
           <SafeIcon icon={getPhaseIcon(project.phase)} className="text-white text-xs" />
           <span className="text-white text-xs font-medium capitalize">{project.phase}</span>
@@ -79,7 +78,7 @@ const ProjectCard = ({ project, index }) => {
           >
             <SafeIcon icon={FiEye} className="text-white text-sm" />
           </motion.button>
-          
+
           {project.phase !== 'completed' && (
             <motion.button
               className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm transition-all"
