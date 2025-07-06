@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProject } from '../context/ProjectContext';
 import SafeIcon from '../common/SafeIcon';
-import ProjectChat from '../components/ProjectChat';
-import ProjectBreadcrumb from '../components/ProjectBreadcrumb';
+import ProjectChat from './ProjectChat';
+import ProjectBreadcrumb from './ProjectBreadcrumb';
 import supabase from '../lib/supabase';
 import * as FiIcons from 'react-icons/fi';
 
@@ -1016,7 +1016,7 @@ const ShotGridCard = ({ shot, onToggle, onImagePreview, sceneChecklistComplete }
   );
 };
 
-// Scene Resources Manager Component
+// Scene Resources Manager Component (keeping it the same for now)
 const SceneResourcesManager = ({ sceneNumber, resources, projectResources, onResourceUpdate }) => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [newItem, setNewItem] = useState('');

@@ -28,7 +28,9 @@ export const ProjectProvider = ({ children }) => {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProjects();
@@ -52,7 +54,7 @@ export const ProjectProvider = ({ children }) => {
         console.error('Error loading projects:', error);
         throw error;
       }
-      
+
       setProjects(data || []);
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -96,7 +98,8 @@ export const ProjectProvider = ({ children }) => {
         timeline: [],
         resources: {},
         completed_shots: [],
-        owner_id: user.id
+        script: '', // Initialize script as empty string
+        owner_id: user.id,
       };
 
       console.log('Inserting clean project data:', cleanProjectData);
@@ -118,11 +121,11 @@ export const ProjectProvider = ({ children }) => {
       }
 
       console.log('Project created successfully:', data);
-      
+
       // Update local state
-      setProjects(prev => [data, ...prev]);
+      setProjects((prev) => [data, ...prev]);
       setCurrentProject(data);
-      
+
       return data;
     } catch (error) {
       console.error('Error in createProject:', error);
@@ -134,6 +137,14 @@ export const ProjectProvider = ({ children }) => {
     try {
       console.log('Updating project:', projectId, updates);
 
+      // Ensure we have valid data for script updates
+      if (updates.script !== undefined) {
+        updates.script = String(updates.script || '');
+      }
+
+      // Add updated timestamp
+      updates.updated_at = new Date().toISOString();
+
       const { data, error } = await supabase
         .from('projects_fc2024')
         .update(updates)
@@ -143,13 +154,18 @@ export const ProjectProvider = ({ children }) => {
 
       if (error) {
         console.error('Update error:', error);
-        throw error;
+        throw new Error(`Failed to update project: ${error.message}`);
       }
 
-      setProjects(prev =>
-        prev.map(project =>
-          project.id === projectId ? data : project
-        )
+      if (!data) {
+        throw new Error('No data returned from update operation');
+      }
+
+      console.log('Project updated successfully:', data);
+
+      // Update local state
+      setProjects((prev) =>
+        prev.map((project) => (project.id === projectId ? data : project))
       );
 
       if (currentProject && currentProject.id === projectId) {
@@ -172,7 +188,7 @@ export const ProjectProvider = ({ children }) => {
 
       if (error) throw error;
 
-      setProjects(prev => prev.filter(project => project.id !== projectId));
+      setProjects((prev) => prev.filter((project) => project.id !== projectId));
       if (currentProject && currentProject.id === projectId) {
         setCurrentProject(null);
       }
@@ -183,14 +199,14 @@ export const ProjectProvider = ({ children }) => {
   };
 
   const getProject = (projectId) => {
-    return projects.find(project => project.id === projectId);
+    return projects.find((project) => project.id === projectId);
   };
 
   const signIn = async (email, password) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
       return { data, error };
     } catch (error) {
@@ -202,7 +218,7 @@ export const ProjectProvider = ({ children }) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
-        password
+        password,
       });
       return { data, error };
     } catch (error) {
@@ -231,12 +247,12 @@ export const ProjectProvider = ({ children }) => {
         .from('projects_fc2024')
         .select('count(*)')
         .limit(1);
-      
+
       if (error) {
         console.error('Database connection test failed:', error);
         return false;
       }
-      
+
       console.log('Database connection test successful');
       return true;
     } catch (error) {
@@ -266,12 +282,10 @@ export const ProjectProvider = ({ children }) => {
     signUp,
     signOut,
     loadProjects,
-    testConnection
+    testConnection,
   };
 
   return (
-    <ProjectContext.Provider value={value}>
-      {children}
-    </ProjectContext.Provider>
+    <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>
   );
 };

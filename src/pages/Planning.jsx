@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useProject } from '../context/ProjectContext';
 import PlanningPrompts from '../components/PlanningPrompts';
+import ProjectBreadcrumb from '../components/ProjectBreadcrumb';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
@@ -68,8 +69,6 @@ const Planning = () => {
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
-    } else {
-      navigate('/ideation');
     }
   };
 
@@ -82,11 +81,16 @@ const Planning = () => {
     if (!project) return false;
 
     switch (currentStep) {
-      case 0: return project.story_structure && project.story_structure.length > 0;
-      case 1: return true; // Shot list is always considered complete (can be empty)
-      case 2: return true; // Schedule is optional but we allow proceeding
-      case 3: return project.resources && Object.keys(project.resources).length > 0;
-      default: return false;
+      case 0:
+        return project.story_structure && project.story_structure.length > 0;
+      case 1:
+        return true; // Shot list is always considered complete (can be empty)
+      case 2:
+        return true; // Schedule is optional but we allow proceeding
+      case 3:
+        return project.resources && Object.keys(project.resources).length > 0;
+      default:
+        return false;
     }
   };
 
@@ -104,6 +108,13 @@ const Planning = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-red-900">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb Navigation */}
+        <ProjectBreadcrumb 
+          project={project} 
+          currentPhase="planning"
+          className="mb-6"
+        />
+
         {/* Phase Indicator */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-500/20 rounded-full border border-purple-500/30">
@@ -144,7 +155,6 @@ const Planning = () => {
               </div>
             ))}
           </div>
-
           <div className="flex items-center justify-between text-sm">
             {steps.map((step, index) => (
               <div key={step.id} className="flex flex-col items-center max-w-24">
@@ -182,7 +192,11 @@ const Planning = () => {
             </div>
           </div>
 
-          <PlanningPrompts step={currentStep} project={project} onDataUpdate={handleDataUpdate} />
+          <PlanningPrompts
+            step={currentStep}
+            project={project}
+            onDataUpdate={handleDataUpdate}
+          />
         </motion.div>
 
         {/* Navigation */}

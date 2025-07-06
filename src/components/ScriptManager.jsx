@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import SafeIcon from '../common/SafeIcon';
-import supabase from '../lib/supabase';
+import { useProject } from '../context/ProjectContext';
 import * as FiIcons from 'react-icons/fi';
 
 const { FiUpload, FiEdit3, FiDownload, FiTrash2, FiPlus, FiFileText, FiSave } = FiIcons;
 
 const ScriptManager = ({ project, onScriptUpdate }) => {
+  const { updateProject } = useProject();
   const [script, setScript] = useState(project.script || '');
   const [scriptFile, setScriptFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState(project.script ? 'edit' : 'empty'); // empty, upload, edit
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     setScript(project.script || '');
@@ -19,7 +21,7 @@ const ScriptManager = ({ project, onScriptUpdate }) => {
 
   const handleFileUpload = async (file) => {
     if (!file) return;
-
+    
     setUploading(true);
     try {
       const text = await file.text();
@@ -35,19 +37,37 @@ const ScriptManager = ({ project, onScriptUpdate }) => {
   };
 
   const saveScript = async (scriptText = script) => {
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('projects_fc2024')
-        .update({ script: scriptText })
-        .eq('id', project.id);
+    if (!scriptText || scriptText.trim() === '') {
+      alert('Script cannot be empty');
+      return;
+    }
 
-      if (error) throw error;
+    setSaving(true);
+    setSaveSuccess(false);
+    
+    try {
+      console.log('Saving script for project:', project.id);
+      console.log('Script content length:', scriptText.length);
       
-      onScriptUpdate(scriptText);
+      // Use the updateProject function from context
+      await updateProject(project.id, { 
+        script: scriptText.trim(),
+        updated_at: new Date().toISOString()
+      });
+      
+      // Call the parent callback to update local state
+      if (onScriptUpdate) {
+        onScriptUpdate(scriptText.trim());
+      }
+      
+      // Show success feedback
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      
+      console.log('Script saved successfully');
     } catch (error) {
       console.error('Error saving script:', error);
-      alert('Error saving script. Please try again.');
+      alert(`Error saving script: ${error.message || 'Please try again.'}`);
     } finally {
       setSaving(false);
     }
@@ -76,6 +96,7 @@ const ScriptManager = ({ project, onScriptUpdate }) => {
         if (currentScene) {
           scenes.push(currentScene);
         }
+        
         currentScene = {
           id: Date.now() + sceneNumber,
           scene_number: sceneNumber,
@@ -107,6 +128,14 @@ const ScriptManager = ({ project, onScriptUpdate }) => {
     a.download = `${project.title}_script.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleScriptChange = (value) => {
+    setScript(value);
+    // Clear any previous success state when user starts typing
+    if (saveSuccess) {
+      setSaveSuccess(false);
+    }
   };
 
   if (mode === 'empty') {
@@ -176,21 +205,31 @@ const ScriptManager = ({ project, onScriptUpdate }) => {
             <SafeIcon icon={FiDownload} className="inline mr-1" />
             Download
           </motion.button>
+          
           <motion.button
-            className="px-3 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-all"
-            whileHover={{ scale: 1.05 }}
+            className={`px-3 py-2 rounded-lg transition-all ${
+              saveSuccess 
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                : saving 
+                  ? 'bg-gray-500/20 text-gray-400' 
+                  : 'bg-green-500/20 hover:bg-green-500/30 text-green-400'
+            }`}
+            whileHover={{ scale: saving ? 1 : 1.05 }}
             onClick={() => saveScript()}
             disabled={saving || !script.trim()}
           >
-            <SafeIcon icon={FiSave} className="inline mr-1" />
-            {saving ? 'Saving...' : 'Save'}
+            <SafeIcon icon={saveSuccess ? FiFileText : FiSave} className="inline mr-1" />
+            {saving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save'}
           </motion.button>
+          
           <motion.button
             className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all"
             whileHover={{ scale: 1.05 }}
             onClick={() => {
-              setScript('');
-              setMode('empty');
+              if (window.confirm('Are you sure you want to clear the script? This action cannot be undone.')) {
+                setScript('');
+                setMode('empty');
+              }
             }}
           >
             <SafeIcon icon={FiTrash2} />
@@ -198,16 +237,29 @@ const ScriptManager = ({ project, onScriptUpdate }) => {
         </div>
       </div>
 
+      {/* Success Message */}
+      {saveSuccess && (
+        <motion.div
+          className="bg-green-500/10 border border-green-500/20 rounded-lg p-3"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+        >
+          <p className="text-green-400 text-sm">✅ Script saved successfully!</p>
+        </motion.div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Script Editor */}
         <div className="lg:col-span-2">
           <textarea
             value={script}
-            onChange={(e) => setScript(e.target.value)}
+            onChange={(e) => handleScriptChange(e.target.value)}
             className="w-full h-96 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none font-mono text-sm"
             placeholder="Write your script here...
 
 Example format:
+
 SCENE 1 - INT. LIVING ROOM - DAY
 
 John sits at his desk, typing on his laptop. The room is cluttered with papers and coffee cups.
@@ -233,7 +285,6 @@ Wide shot of the park. Children playing in the background."
                 onClick={() => {
                   const scenes = generateScenesFromScript();
                   if (scenes.length > 0) {
-                    // This would trigger scene generation
                     alert(`Found ${scenes.length} scenes in your script!`);
                   } else {
                     alert('No scenes detected. Try using scene headings like "SCENE 1", "INT.", or "EXT."');
@@ -270,6 +321,16 @@ Wide shot of the park. Children playing in the background."
                 <span className="text-gray-400">Characters:</span>
                 <span className="text-white">{script.length}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Auto-save indicator */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+            <div className="flex items-center space-x-2">
+              <SafeIcon icon={FiFileText} className="text-blue-400 text-sm" />
+              <span className="text-blue-300 text-xs">
+                Remember to save your script regularly
+              </span>
             </div>
           </div>
         </div>

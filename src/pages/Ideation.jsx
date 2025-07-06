@@ -1,20 +1,24 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useProject } from '../context/ProjectContext';
 import IdeationPrompts from '../components/IdeationPrompts';
 import EditableField from '../components/EditableField';
+import ProjectBreadcrumb from '../components/ProjectBreadcrumb';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiArrowRight, FiLightbulb, FiUsers, FiTarget, FiClock } = FiIcons;
+const { FiArrowRight, FiLightbulb, FiUsers, FiTarget, FiClock, FiSave } = FiIcons;
 
 const Ideation = () => {
+  const { projectId } = useParams(); // Get projectId from URL if editing existing project
   const navigate = useNavigate();
-  const { createProject, user } = useProject();
+  const { createProject, updateProject, getProject, user } = useProject();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [project, setProject] = useState(null);
   const [projectData, setProjectData] = useState({
     title: '',
     type: '',
@@ -48,6 +52,35 @@ const Ideation = () => {
     }
   ];
 
+  // Load existing project data if editing
+  useEffect(() => {
+    if (projectId) {
+      const existingProject = getProject(projectId);
+      if (existingProject) {
+        setProject(existingProject);
+        setIsEditing(true);
+        setProjectData({
+          title: existingProject.title || '',
+          type: existingProject.type || '',
+          target_audience: existingProject.target_audience || '',
+          duration: existingProject.duration || '',
+          concept: existingProject.concept || '',
+          key_message: existingProject.key_message || '',
+          tone: existingProject.tone || '',
+          inspiration: existingProject.inspiration || '',
+          unique_angle: existingProject.unique_angle || ''
+        });
+      } else {
+        // Project not found, redirect to dashboard
+        navigate('/');
+      }
+    } else {
+      // Creating new project
+      setIsEditing(false);
+      setProject(null);
+    }
+  }, [projectId, getProject, navigate]);
+
   const handleDataUpdate = (data) => {
     setProjectData(prev => ({ ...prev, ...data }));
     setError(''); // Clear any previous errors
@@ -72,6 +105,42 @@ const Ideation = () => {
     }
   };
 
+  const handleSaveChanges = async () => {
+    if (!user || !isEditing) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Validate required fields
+      const errors = [];
+      if (!projectData.title?.trim()) {
+        errors.push('Project title');
+      }
+      if (!projectData.type?.trim()) {
+        errors.push('Video type');
+      }
+      if (!projectData.concept?.trim()) {
+        errors.push('Core concept');
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Please fill in the following required fields: ${errors.join(', ')}`);
+      }
+
+      console.log('Updating project with data:', projectData);
+      await updateProject(projectId, projectData);
+      
+      // Show success message or navigate back
+      navigate(`/project/${projectId}`);
+    } catch (error) {
+      console.error('Error updating project:', error);
+      setError(error.message || 'Failed to update project. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleComplete = async () => {
     if (!user) {
       setError('Please sign in to create a project');
@@ -82,9 +151,14 @@ const Ideation = () => {
     setError('');
 
     try {
-      // Validate required fields with specific error messages
+      if (isEditing) {
+        // Update existing project
+        await handleSaveChanges();
+        return;
+      }
+
+      // Create new project
       const errors = [];
-      
       if (!projectData.title?.trim()) {
         errors.push('Project title');
       }
@@ -94,19 +168,17 @@ const Ideation = () => {
       if (!projectData.concept?.trim()) {
         errors.push('Core concept');
       }
-      
+
       if (errors.length > 0) {
         throw new Error(`Please fill in the following required fields: ${errors.join(', ')}`);
       }
 
       console.log('Creating project with validated data:', projectData);
-
-      const project = await createProject(projectData);
-      
+      const newProject = await createProject(projectData);
       console.log('Project created successfully, navigating to planning...');
       
       // Navigate to planning phase with the new project ID
-      navigate(`/planning/${project.id}`);
+      navigate(`/planning/${newProject.id}`);
     } catch (error) {
       console.error('Error creating project:', error);
       setError(error.message || 'Failed to create project. Please try again.');
@@ -117,13 +189,13 @@ const Ideation = () => {
 
   const isStepComplete = () => {
     switch (currentStep) {
-      case 0: 
+      case 0:
         return projectData.title?.trim() && projectData.type?.trim() && projectData.duration?.trim();
-      case 1: 
+      case 1:
         return projectData.concept?.trim() && projectData.key_message?.trim();
-      case 2: 
+      case 2:
         return projectData.target_audience?.trim() && projectData.tone?.trim();
-      default: 
+      default:
         return false;
     }
   };
@@ -141,13 +213,32 @@ const Ideation = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb Navigation */}
+        {project && (
+          <ProjectBreadcrumb 
+            project={project} 
+            currentPhase="ideation"
+            className="mb-6"
+          />
+        )}
+
         {/* Phase Indicator */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-500/20 rounded-full border border-blue-500/30">
             <SafeIcon icon={FiLightbulb} className="text-blue-400" />
-            <span className="text-blue-400 font-medium">Ideation Phase</span>
+            <span className="text-blue-400 font-medium">
+              {isEditing ? 'Edit Project Concept' : 'Ideation Phase'}
+            </span>
           </div>
         </div>
+
+        {/* Project Title for Editing */}
+        {isEditing && project && (
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-white mb-2">{project.title}</h1>
+            <p className="text-gray-300">Editing project concept and details</p>
+          </div>
+        )}
 
         {/* Error Display */}
         {error && (
@@ -181,9 +272,11 @@ const Ideation = () => {
                   )}
                 </motion.div>
                 {index < steps.length - 1 && (
-                  <div className={`w-20 h-0.5 ml-2 transition-all ${
-                    index < currentStep ? 'bg-blue-500' : 'bg-gray-600'
-                  }`} />
+                  <div
+                    className={`w-20 h-0.5 ml-2 transition-all ${
+                      index < currentStep ? 'bg-blue-500' : 'bg-gray-600'
+                    }`}
+                  />
                 )}
               </div>
             ))}
@@ -191,9 +284,11 @@ const Ideation = () => {
           <div className="flex items-center justify-between text-sm">
             {steps.map((step, index) => (
               <div key={step.id} className="flex flex-col items-center">
-                <span className={`font-medium ${
-                  index <= currentStep ? 'text-blue-400' : 'text-gray-400'
-                }`}>
+                <span
+                  className={`font-medium ${
+                    index <= currentStep ? 'text-blue-400' : 'text-gray-400'
+                  }`}
+                >
                   {step.title}
                 </span>
                 <span className="text-gray-500 text-xs mt-1">
@@ -241,7 +336,9 @@ const Ideation = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <h3 className="text-lg font-semibold text-white mb-4">Project Preview</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">
+                {isEditing ? 'Project Preview' : 'Project Preview'}
+              </h3>
               <div className="space-y-4">
                 <EditableField
                   label="Project Title"
@@ -254,7 +351,18 @@ const Ideation = () => {
                   value={projectData.type}
                   onSave={(value) => handleFieldSave('type', value)}
                   type="select"
-                  options={['Vlog', 'Tutorial', 'Review', 'Travel', 'Food', 'Lifestyle', 'Business', 'Educational', 'Entertainment', 'Documentary']}
+                  options={[
+                    'Vlog',
+                    'Tutorial',
+                    'Review',
+                    'Travel',
+                    'Food',
+                    'Lifestyle',
+                    'Business',
+                    'Educational',
+                    'Entertainment',
+                    'Documentary'
+                  ]}
                   placeholder="Select video type..."
                 />
                 <EditableField
@@ -262,7 +370,14 @@ const Ideation = () => {
                   value={projectData.duration}
                   onSave={(value) => handleFieldSave('duration', value)}
                   type="select"
-                  options={['30 seconds - 1 minute', '1-3 minutes', '3-5 minutes', '5-10 minutes', '10-15 minutes', '15+ minutes']}
+                  options={[
+                    '30 seconds - 1 minute',
+                    '1-3 minutes',
+                    '3-5 minutes',
+                    '5-10 minutes',
+                    '10-15 minutes',
+                    '15+ minutes'
+                  ]}
                   placeholder="Select duration..."
                 />
                 <EditableField
@@ -291,7 +406,16 @@ const Ideation = () => {
                   value={projectData.tone}
                   onSave={(value) => handleFieldSave('tone', value)}
                   type="select"
-                  options={['Casual & Friendly', 'Professional & Informative', 'Energetic & Fun', 'Calm & Relaxing', 'Inspiring & Motivational', 'Humorous & Entertaining', 'Serious & Educational', 'Personal & Intimate']}
+                  options={[
+                    'Casual & Friendly',
+                    'Professional & Informative',
+                    'Energetic & Fun',
+                    'Calm & Relaxing',
+                    'Inspiring & Motivational',
+                    'Humorous & Entertaining',
+                    'Serious & Educational',
+                    'Personal & Intimate'
+                  ]}
                   placeholder="Select tone..."
                 />
                 <EditableField
@@ -317,40 +441,61 @@ const Ideation = () => {
         <div className="flex items-center justify-between">
           <motion.button
             className={`px-6 py-3 rounded-lg transition-all ${
-              currentStep === 0
+              currentStep === 0 && !isEditing
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                 : 'bg-white/10 hover:bg-white/20 text-white'
             }`}
-            whileHover={currentStep > 0 ? { scale: 1.05 } : {}}
-            whileTap={currentStep > 0 ? { scale: 0.95 } : {}}
-            onClick={handleBack}
-            disabled={currentStep === 0}
+            whileHover={currentStep > 0 || isEditing ? { scale: 1.05 } : {}}
+            whileTap={currentStep > 0 || isEditing ? { scale: 0.95 } : {}}
+            onClick={isEditing ? () => navigate(`/project/${projectId}`) : handleBack}
+            disabled={currentStep === 0 && !isEditing}
           >
-            Back
+            {isEditing ? 'Back to Project' : 'Back'}
           </motion.button>
 
           <div className="text-center">
             <span className="text-gray-400">
-              Step {currentStep + 1} of {steps.length}
+              {isEditing ? 'Editing Project' : `Step ${currentStep + 1} of ${steps.length}`}
             </span>
           </div>
 
-          <motion.button
-            className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all ${
-              isStepComplete() && !loading
-                ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white'
-                : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-            }`}
-            whileHover={isStepComplete() && !loading ? { scale: 1.05 } : {}}
-            whileTap={isStepComplete() && !loading ? { scale: 0.95 } : {}}
-            onClick={handleNext}
-            disabled={!isStepComplete() || loading}
-          >
-            <span>
-              {loading ? 'Creating...' : currentStep === steps.length - 1 ? 'Start Planning' : 'Next'}
-            </span>
-            {!loading && <SafeIcon icon={FiArrowRight} />}
-          </motion.button>
+          {isEditing ? (
+            <motion.button
+              className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all ${
+                isStepComplete() && !loading
+                  ? 'bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white'
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              }`}
+              whileHover={isStepComplete() && !loading ? { scale: 1.05 } : {}}
+              whileTap={isStepComplete() && !loading ? { scale: 0.95 } : {}}
+              onClick={handleSaveChanges}
+              disabled={!isStepComplete() || loading}
+            >
+              <SafeIcon icon={FiSave} />
+              <span>{loading ? 'Saving...' : 'Save Changes'}</span>
+            </motion.button>
+          ) : (
+            <motion.button
+              className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all ${
+                isStepComplete() && !loading
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white'
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              }`}
+              whileHover={isStepComplete() && !loading ? { scale: 1.05 } : {}}
+              whileTap={isStepComplete() && !loading ? { scale: 0.95 } : {}}
+              onClick={handleNext}
+              disabled={!isStepComplete() || loading}
+            >
+              <span>
+                {loading
+                  ? 'Creating...'
+                  : currentStep === steps.length - 1
+                    ? 'Start Planning'
+                    : 'Next'}
+              </span>
+              {!loading && <SafeIcon icon={FiArrowRight} />}
+            </motion.button>
+          )}
         </div>
       </div>
     </div>

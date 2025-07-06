@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useProject } from '../context/ProjectContext';
+import ProjectBreadcrumb from '../components/ProjectBreadcrumb';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiEdit, FiTrash2, FiDownload, FiShare2, FiPlay, FiCheck, FiClock } = FiIcons;
+const { FiEdit, FiTrash2, FiDownload, FiShare2, FiPlay, FiCheck, FiClock, FiLightbulb, FiLayers, FiVideo } = FiIcons;
 
 const ProjectView = () => {
   const { projectId } = useParams();
@@ -31,12 +32,16 @@ const ProjectView = () => {
 
   const handleContinue = () => {
     if (project.phase === 'ideation') {
-      navigate('/ideation');
+      navigate(`/ideation/${projectId}`);
     } else if (project.phase === 'planning') {
       navigate(`/planning/${projectId}`);
     } else if (project.phase === 'shooting') {
       navigate(`/shooting/${projectId}`);
     }
+  };
+
+  const handleEditIdeation = () => {
+    navigate(`/ideation/${projectId}`);
   };
 
   if (!project) {
@@ -52,9 +57,9 @@ const ProjectView = () => {
 
   const getPhaseIcon = (phase) => {
     switch (phase) {
-      case 'ideation': return FiEdit;
-      case 'planning': return FiClock;
-      case 'shooting': return FiPlay;
+      case 'ideation': return FiLightbulb;
+      case 'planning': return FiLayers;
+      case 'shooting': return FiVideo;
       case 'completed': return FiCheck;
       default: return FiEdit;
     }
@@ -72,8 +77,15 @@ const ProjectView = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Breadcrumb Navigation */}
+      <ProjectBreadcrumb 
+        project={project} 
+        currentPhase="overview"
+        className="mb-6"
+      />
+
       {/* Project Header */}
-      <motion.div 
+      <motion.div
         className="bg-white/5 backdrop-blur-sm rounded-xl p-8 mb-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -82,20 +94,26 @@ const ProjectView = () => {
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-white mb-2">{project.title}</h1>
             <p className="text-gray-300 mb-4">{project.concept}</p>
-            
             <div className="flex items-center space-x-4">
               <div className={`flex items-center space-x-2 px-3 py-1 rounded-full bg-gradient-to-r ${getPhaseColor(project.phase)}`}>
                 <SafeIcon icon={getPhaseIcon(project.phase)} className="text-white text-sm" />
                 <span className="text-white text-sm font-medium capitalize">{project.phase}</span>
               </div>
-              
               <span className="text-gray-400 text-sm">
                 {project.type} • {project.duration}
               </span>
             </div>
           </div>
-
           <div className="flex items-center space-x-2">
+            <motion.button
+              className="px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleEditIdeation}
+            >
+              <SafeIcon icon={FiEdit} className="inline mr-2" />
+              Edit Concept
+            </motion.button>
             {project.phase !== 'completed' && (
               <motion.button
                 className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all"
@@ -106,7 +124,6 @@ const ProjectView = () => {
                 Continue
               </motion.button>
             )}
-            
             <motion.button
               className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all"
               whileHover={{ scale: 1.05 }}
@@ -122,7 +139,7 @@ const ProjectView = () => {
       {/* Project Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Basic Info */}
-        <motion.div 
+        <motion.div
           className="bg-white/5 backdrop-blur-sm rounded-xl p-6"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -131,21 +148,33 @@ const ProjectView = () => {
           <div className="space-y-3">
             <div>
               <span className="text-gray-400">Target Audience:</span>
-              <p className="text-white">{project.target_audience}</p>
+              <p className="text-white">{project.target_audience || 'Not specified'}</p>
             </div>
             <div>
               <span className="text-gray-400">Tone:</span>
-              <p className="text-white">{project.tone}</p>
+              <p className="text-white">{project.tone || 'Not specified'}</p>
             </div>
             <div>
               <span className="text-gray-400">Key Message:</span>
-              <p className="text-white">{project.key_message}</p>
+              <p className="text-white">{project.key_message || 'Not specified'}</p>
             </div>
+            {project.unique_angle && (
+              <div>
+                <span className="text-gray-400">Unique Angle:</span>
+                <p className="text-white">{project.unique_angle}</p>
+              </div>
+            )}
+            {project.inspiration && (
+              <div>
+                <span className="text-gray-400">Inspiration:</span>
+                <p className="text-white">{project.inspiration}</p>
+              </div>
+            )}
           </div>
         </motion.div>
 
         {/* Timeline */}
-        <motion.div 
+        <motion.div
           className="bg-white/5 backdrop-blur-sm rounded-xl p-6"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -154,11 +183,11 @@ const ProjectView = () => {
           <div className="space-y-3">
             <div>
               <span className="text-gray-400">Created:</span>
-              <p className="text-white">{new Date(project.createdAt).toLocaleDateString()}</p>
+              <p className="text-white">{new Date(project.created_at).toLocaleDateString()}</p>
             </div>
             <div>
               <span className="text-gray-400">Last Updated:</span>
-              <p className="text-white">{new Date(project.updatedAt).toLocaleDateString()}</p>
+              <p className="text-white">{new Date(project.updated_at || project.created_at).toLocaleDateString()}</p>
             </div>
             {project.completed_at && (
               <div>
@@ -171,8 +200,8 @@ const ProjectView = () => {
       </div>
 
       {/* Story Structure */}
-      {project.story_structure && (
-        <motion.div 
+      {project.story_structure && project.story_structure.length > 0 && (
+        <motion.div
           className="bg-white/5 backdrop-blur-sm rounded-xl p-6 mt-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -183,48 +212,91 @@ const ProjectView = () => {
               <div key={index} className="border-l-4 border-purple-500 pl-4">
                 <h4 className="font-semibold text-white">{segment.title}</h4>
                 <p className="text-gray-300">{segment.description}</p>
-                <span className="text-sm text-gray-400">{segment.duration}</span>
+                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-400">
+                  <span>{segment.duration}</span>
+                  {segment.location && (
+                    <>
+                      <span>•</span>
+                      <span>{segment.location}</span>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </motion.div>
       )}
 
-      {/* Shot List */}
-      {project.shot_list && (
-        <motion.div 
+      {/* Resources */}
+      {project.resources && Object.keys(project.resources).length > 0 && (
+        <motion.div
           className="bg-white/5 backdrop-blur-sm rounded-xl p-6 mt-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h3 className="text-xl font-semibold text-white mb-4">Shot List</h3>
-          <div className="space-y-4">
-            {project.shot_list.map((shot, index) => (
-              <div key={index} className="flex items-start space-x-4 p-4 bg-white/5 rounded-lg">
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                  project.completed_shots && project.completed_shots.includes(index) 
-                    ? 'bg-green-500' 
-                    : 'bg-gray-600'
-                }`}>
-                  {project.completed_shots && project.completed_shots.includes(index) ? (
-                    <SafeIcon icon={FiCheck} className="text-white text-sm" />
-                  ) : (
-                    <span className="text-white text-sm font-medium">{index + 1}</span>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-white">{shot.title}</h4>
-                  <p className="text-gray-300">{shot.description}</p>
-                  <div className="flex items-center space-x-4 mt-2 text-sm text-gray-400">
-                    <span>{shot.type}</span>
-                    <span>{shot.duration}</span>
-                  </div>
+          <h3 className="text-xl font-semibold text-white mb-4">Project Resources</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Object.entries(project.resources).map(([category, items]) => (
+              <div key={category} className="space-y-2">
+                <h4 className="font-medium text-purple-400 capitalize">{category}</h4>
+                <div className="space-y-1">
+                  {items.filter(item => item.trim()).map((item, index) => (
+                    <div key={index} className="text-sm text-gray-300 bg-white/5 rounded px-2 py-1">
+                      {item}
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
         </motion.div>
       )}
+
+      {/* Quick Actions */}
+      <motion.div
+        className="bg-white/5 backdrop-blur-sm rounded-xl p-6 mt-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <h3 className="text-xl font-semibold text-white mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <motion.button
+            className="flex flex-col items-center space-y-2 p-4 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition-all"
+            whileHover={{ scale: 1.05 }}
+            onClick={() => navigate(`/ideation/${projectId}`)}
+          >
+            <SafeIcon icon={FiLightbulb} className="text-blue-400 text-xl" />
+            <span className="text-blue-400 text-sm font-medium">Edit Concept</span>
+          </motion.button>
+          
+          <motion.button
+            className="flex flex-col items-center space-y-2 p-4 bg-purple-500/20 hover:bg-purple-500/30 rounded-lg transition-all"
+            whileHover={{ scale: 1.05 }}
+            onClick={() => navigate(`/planning/${projectId}`)}
+          >
+            <SafeIcon icon={FiLayers} className="text-purple-400 text-xl" />
+            <span className="text-purple-400 text-sm font-medium">Planning</span>
+          </motion.button>
+          
+          <motion.button
+            className="flex flex-col items-center space-y-2 p-4 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-all"
+            whileHover={{ scale: 1.05 }}
+            onClick={() => navigate(`/shooting/${projectId}`)}
+          >
+            <SafeIcon icon={FiVideo} className="text-red-400 text-xl" />
+            <span className="text-red-400 text-sm font-medium">Shooting</span>
+          </motion.button>
+          
+          <motion.button
+            className="flex flex-col items-center space-y-2 p-4 bg-gray-500/20 hover:bg-gray-500/30 rounded-lg transition-all"
+            whileHover={{ scale: 1.05 }}
+            onClick={() => navigate('/')}
+          >
+            <SafeIcon icon={FiPlay} className="text-gray-400 text-xl" />
+            <span className="text-gray-400 text-sm font-medium">Dashboard</span>
+          </motion.button>
+        </div>
+      </motion.div>
     </div>
   );
 };

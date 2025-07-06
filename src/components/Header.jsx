@@ -2,23 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useProject } from '../context/ProjectContext';
-import CollaborationPanel from './CollaborationPanel';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiVideo, FiHome, FiArrowLeft, FiUsers, FiUser, FiLogOut } = FiIcons;
+const { FiVideo, FiHome, FiArrowLeft, FiUser, FiLogOut } = FiIcons;
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useProject();
-  const [showCollaboration, setShowCollaboration] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const isHome = location.pathname === '/';
-  const projectId = location.pathname.includes('/project/') || location.pathname.includes('/planning/') || location.pathname.includes('/shooting/') 
-    ? location.pathname.split('/').pop() 
-    : null;
 
   const handleSignOut = async () => {
     await signOut();
@@ -29,7 +24,7 @@ const Header = () => {
 
   return (
     <>
-      <motion.header 
+      <motion.header
         className="bg-black/20 backdrop-blur-lg border-b border-white/10 sticky top-0 z-40"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -37,7 +32,7 @@ const Header = () => {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <motion.div 
+            <motion.div
               className="flex items-center space-x-3 cursor-pointer"
               whileHover={{ scale: 1.05 }}
               onClick={() => navigate('/')}
@@ -51,19 +46,6 @@ const Header = () => {
             </motion.div>
 
             <div className="flex items-center space-x-4">
-              {/* Collaboration Button - only show on project pages */}
-              {projectId && (
-                <motion.button
-                  className="flex items-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowCollaboration(true)}
-                >
-                  <SafeIcon icon={FiUsers} className="text-white" />
-                  <span className="text-white">Team</span>
-                </motion.button>
-              )}
-
               {!isHome && (
                 <motion.button
                   className="flex items-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
@@ -119,17 +101,10 @@ const Header = () => {
         </div>
       </motion.header>
 
-      {/* Collaboration Panel */}
-      <CollaborationPanel
-        projectId={projectId}
-        isOpen={showCollaboration}
-        onClose={() => setShowCollaboration(false)}
-      />
-
       {/* Click outside to close user menu */}
       {showUserMenu && (
-        <div 
-          className="fixed inset-0 z-30" 
+        <div
+          className="fixed inset-0 z-30"
           onClick={() => setShowUserMenu(false)}
         />
       )}

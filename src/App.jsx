@@ -2,6 +2,7 @@ import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from './components/Header';
+import ProjectChatProvider from './components/ProjectChatProvider';
 import Dashboard from './pages/Dashboard';
 import Ideation from './pages/Ideation';
 import Planning from './pages/Planning';
@@ -37,11 +38,15 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/ideation" element={<Ideation />} />
+            <Route path="/ideation/:projectId" element={<Ideation />} />
             <Route path="/planning/:projectId" element={<Planning />} />
             <Route path="/shooting/:projectId" element={<Shooting />} />
             <Route path="/project/:projectId" element={<ProjectView />} />
           </Routes>
         </AnimatePresence>
+        
+        {/* Global Floating Chat */}
+        <ProjectChatProvider />
       </div>
     </Router>
   );
